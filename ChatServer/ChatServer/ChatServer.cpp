@@ -10,23 +10,23 @@
 
 using namespace std;
 
-const string IP = "192.168.2.10";
-const char *IpAddress = IP.c_str();
-const int  Port = 3333;
+//const string IP = "192.168.2.10";
+//const char *IpAddress = IP.c_str();
+//const int  Port = 3333;
 const int Buffor = 128;
 
 int main()
 {
-	/*
+	
 	string IP;
 	int Port;
-	cout << "Podaj IP komputera: ";
+	cout << "Podaj IP tego komputera: ";
 	getline(cin, IP);
-	cout << endl << "Podaj port na jakim ma pracowac serwer: ";
+	cout << "Podaj port na jakim ma pracowac serwer: ";
 	cin >> Port;
 
 	const char *IpAddress = IP.c_str();
-	*/
+	
 
 	WSADATA wsaData;
 
@@ -73,18 +73,19 @@ int main()
 	int bytesSent;
 	int bytesRecv = SOCKET_ERROR;
 
-	string str;
+	string str = "";
 	char sendbuf[32] = "";
 	char recvbuf[32] = "";
-	while(result == 0){
-		bytesRecv = recv(mainSocket, recvbuf, 32, 0);
+	while (result == 0){
+		memset(recvbuf, 0, strlen(recvbuf));
+		recv(mainSocket, recvbuf, 32, 0);
 		printf("%s\n", recvbuf);
-		memset(recvbuf, 0, sizeof recvbuf);
 
-		getline(cin, str);
+		memset(sendbuf, 0, strlen(sendbuf));
+		//getline(cin, str);
+		cin>>sendbuf;
 		const char *napis = str.c_str();
-		send(mainSocket, napis, strlen(napis), 0);
-		memset(sendbuf, 0, sizeof sendbuf);
+		send(mainSocket, sendbuf, strlen(sendbuf), 0);
 	}
 	system("PAUSE");
 	return 0;
