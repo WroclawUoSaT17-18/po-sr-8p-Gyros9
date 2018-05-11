@@ -1,38 +1,93 @@
 #include "stdafx.h"
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <cstdio>
 #pragma comment(lib, "Ws2_32.lib")
-#include <cstdlib>
 #include <iostream>
+#include <winsock2.h>
+#include <thread>
+#include <vector>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <winsock2.h>
-#include <istream>
 
-using namespace std;
 
-//const string IP = "192.168.2.10";
-//const char *IpAddress = IP.c_str();
-//const int  Port = 3333;
-const int Buffor = 128;
+struct client_type
+{
+	int id;
+	SOCKET socket;
+	std::string nick;
+};
+
+const char OPTION_VALUE = 1;
+const int MAX_CLIENTS = 5;
+#define DEFAULT_BUFLEN 512
+
+int process_client(client_type &new_client, std::vector<client_type> &client_array, std::thread &thread)
+{
+	std::string msg = "";
+	char tempmsg[DEFAULT_BUFLEN] = "";
+
+	while (1)
+	{
+		memset(tempmsg, 0, DEFAULT_BUFLEN);
+
+		if (new_client.socket != 0)
+		{
+			int iResult = recv(new_client.socket, tempmsg, DEFAULT_BUFLEN, 0);
+			
+			if (iResult != SOCKET_ERROR)
+			{
+				if (strcmp("", tempmsg))
+					msg = new_client.nick + ": " + tempmsg;
+
+				std::cout << msg.c_str() << std::endl;
+
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (client_array[i].socket != INVALID_SOCKET)
+						if (new_client.id != i)
+							iResult = send(client_array[i].socket, msg.c_str(), strlen(msg.c_str()), 0);
+				}
+			}
+			else
+			{
+				msg = "Uzytkownik " + new_client.nick + " rozlaczyl sie :(";
+
+				std::cout << msg << std::endl;
+
+				closesocket(new_client.socket);
+				closesocket(client_array[new_client.id].socket);
+				client_array[new_client.id].socket = INVALID_SOCKET;
+
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (client_array[i].socket != INVALID_SOCKET)
+						iResult = send(client_array[i].socket, msg.c_str(), strlen(msg.c_str()), 0);
+				}
+
+				break;
+			}
+		}
+	}
+
+	thread.detach();
+
+	return 0;
+}
 
 int main()
 {
-	
-	string IP;
-	int Port;
-	cout << "Podaj IP tego komputera: ";
-	getline(cin, IP);
-	cout << "Podaj port na jakim ma pracowac serwer: ";
-	cin >> Port;
-
-	const char *IpAddress = IP.c_str();
-	
-
+	std::string msg = "";
+	std::vector<client_type> client(MAX_CLIENTS);
+	int num_clients = 0;
+	int temp_id = -1;
+	std::thread my_thread[MAX_CLIENTS];
 	WSADATA wsaData;
 
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result != NO_ERROR)
 		printf("Blad inicjalizacji.\n");
+
 
 	SOCKET mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (mainSocket == INVALID_SOCKET)
@@ -45,48 +100,73 @@ int main()
 	sockaddr_in service;
 	memset(&service, 0, sizeof(service));
 	service.sin_family = AF_INET;
-	service.sin_addr.s_addr = inet_addr(IpAddress);
-	service.sin_port = htons(Port);
+	service.sin_addr.s_addr = inet_addr("127.0.0.1");
+	service.sin_port = htons(27015);
 
 	if (bind(mainSocket, (SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
 	{
+		printf("Blad bind().\n");
 		closesocket(mainSocket);
 		return 1;
 	}
 
 	if (listen(mainSocket, 1) == SOCKET_ERROR)
-		printf("Blad nasluchiwania.\n");
-
+		printf("Blad nasluchiwania socketu.\n");
 
 	SOCKET acceptSocket = SOCKET_ERROR;
-	printf("Oczekiwanie na uzytkownika...\n");
+	printf("Czekam na uzytkownikow...\n");
 
-	while (acceptSocket == SOCKET_ERROR)
+	for (int i = 0; i < MAX_CLIENTS; i++)
 	{
-		acceptSocket = accept(mainSocket, NULL, NULL);
+		client[i] = { -1, INVALID_SOCKET };
 	}
 
-	printf("Uzywkotnik podlaczony.\n");
-	mainSocket = acceptSocket;
-	send(mainSocket, "OK", 2, 0);
+	while (1)
+	{
 
-	int bytesSent;
-	int bytesRecv = SOCKET_ERROR;
+		SOCKET incoming = INVALID_SOCKET;
+		incoming = accept(mainSocket, NULL, NULL);
 
-	string str = "";
-	char sendbuf[32] = "";
-	char recvbuf[32] = "";
-	while (result == 0){
-		memset(recvbuf, 0, strlen(recvbuf));
-		recv(mainSocket, recvbuf, 32, 0);
-		printf("%s\n", recvbuf);
+		if (incoming == INVALID_SOCKET) continue;
 
-		memset(sendbuf, 0, strlen(sendbuf));
-		//getline(cin, str);
-		cin>>sendbuf;
-		const char *napis = str.c_str();
-		send(mainSocket, sendbuf, strlen(sendbuf), 0);
+		num_clients = -1;
+
+		temp_id = -1;
+		for (int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if (client[i].socket == INVALID_SOCKET && temp_id == -1)
+			{
+				client[i].socket = incoming;
+				client[i].id = i;
+				temp_id = i;
+			}
+
+			if (client[i].socket != INVALID_SOCKET)
+				num_clients++;
+
+		}
+		char nick[10];
+		memset(nick, 0, 10);
+		recv(client[temp_id].socket, nick, 10, 0);
+		client[temp_id].nick = nick;
+		std::cout <<client[temp_id].nick<< " dolaczyl."<<std::endl;
+		
+		
+		my_thread[temp_id] = std::thread(process_client, std::ref(client[temp_id]), std::ref(client), std::ref(my_thread[temp_id]));
+		
+	} 
+
+
+	closesocket(mainSocket);
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		my_thread[i].detach();
+		closesocket(client[i].socket);
 	}
+
+	WSACleanup();
+
 	system("PAUSE");
 	return 0;
 }

@@ -1,37 +1,68 @@
 #include "stdafx.h"
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <cstdio>
 #pragma comment(lib, "Ws2_32.lib")
-#include <cstdlib>
-#include <string>
 #include <iostream>
-#include <istream>
 #include <winsock2.h>
-#include <stdlib.h>
+#include <thread>
+#include <stdio.h>
+#include <string>
 
 using namespace std;
 
-const string IP = "192.168.2.10";
-const int  Port = 3333;
+#include <cstdio>
+#include <cstdlib>
+#include <winsock2.h>
+
+#define DEFAULT_BUFLEN 512
+
+struct client_type
+{
+	SOCKET socket;
+	int id;
+	char received_message[DEFAULT_BUFLEN];
+};
+
+int process_client(client_type &new_client)
+{
+	while (1)
+	{
+		memset(new_client.received_message, 0, DEFAULT_BUFLEN);
+
+		if (new_client.socket != 0)
+		{
+			int iResult = recv(new_client.socket, new_client.received_message, DEFAULT_BUFLEN, 0);
+
+			if (iResult != SOCKET_ERROR)
+				cout << new_client.received_message << endl;
+			else
+			{
+				cout << "Blad recv(): " << WSAGetLastError() << endl;
+				break;
+			}
+		}
+	}
+
+	if (WSAGetLastError() == WSAECONNRESET)
+		cout << "Serwer padl" << endl;
+
+	return 0;
+}
+
 
 int main()
 {
-	
-	string IP, Login = "";
-	int Port;
-	cout << "Podaj IP serwera: ";
-	getline(cin, IP);
-	cout << "Podaj port na jakim pracuje serwer: ";
-	cin >> Port;
-
-
-	const char *IpAddress = IP.c_str();
+	struct addrinfo *resultt = NULL, *ptr = NULL;
+	string message,nick;
+	int iResult = 0;
+	string sent_message = "";
+	client_type client = { INVALID_SOCKET, -1, ""};
 
 	WSADATA wsaData;
 
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result != NO_ERROR)
-		printf("Blat inicjalizacji.\n");
+		printf("Blad inicjalizacji.\n");
+
 
 	SOCKET mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (mainSocket == INVALID_SOCKET)
@@ -44,35 +75,47 @@ int main()
 	sockaddr_in service;
 	memset(&service, 0, sizeof(service));
 	service.sin_family = AF_INET;
-	service.sin_addr.s_addr = inet_addr(IpAddress);
-	service.sin_port = htons(Port);
+	service.sin_addr.s_addr = inet_addr("127.0.0.1");
+	service.sin_port = htons(27015);
 
 	if (connect(mainSocket, (SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
 	{
 		printf("Blad polaczenia.\n");
 		WSACleanup();
+		system("PAUSE");
 		return 1;
 	}
 
-	string str;
-	int bytesSent;
-	int bytesRecv = SOCKET_ERROR;
-	char sendbuf[32] = "";
-	char recvbuf[32] = "";
+	client.socket = mainSocket;
+	client.id = atoi(client.received_message);
+	cout << "Podaj nick: ";
+	thread my_thread(process_client, client);
 
-	while (result == 0){
+	while (true)
+	{
+		getline(cin, sent_message);
+		iResult = send(client.socket, sent_message.c_str(), strlen(sent_message.c_str()), 0);
 
-		memset(sendbuf, 0, strlen(sendbuf));
-		getline(cin,str);
-		const char *napis = str.c_str();
-		send(mainSocket, napis, strlen(napis), 0);
-
-		bytesRecv = recv(mainSocket, recvbuf, 32, 0);
-
-		printf("%s\n", recvbuf);
-		
-		memset(recvbuf, 0, strlen(recvbuf));
+		if (iResult <= 0)
+		{
+			cout << "Blad wysylania: " << WSAGetLastError() << endl;
+			break;
+		}
 	}
+
+	my_thread.detach();
+
+	iResult = shutdown(client.socket, SD_SEND);
+	if (iResult == SOCKET_ERROR) {
+		closesocket(client.socket);
+		WSACleanup();
+		system("PAUSE");
+		return 1;
+	}
+
+	closesocket(client.socket);
+	WSACleanup();
+
 	system("PAUSE");
 	return 0;
 }
