@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <string>
 #include <winsock2.h>
-
+#define BUFLEN 512
 
 struct client_type
 {
@@ -20,20 +20,19 @@ struct client_type
 
 const char OPTION_VALUE = 1;
 const int MAX_CLIENTS = 5;
-#define DEFAULT_BUFLEN 512
 
 int process_client(client_type &new_client, std::vector<client_type> &client_array, std::thread &thread)
 {
 	std::string msg = "";
-	char tempmsg[DEFAULT_BUFLEN] = "";
+	char tempmsg[BUFLEN] = "";
 
 	while (1)
 	{
-		memset(tempmsg, 0, DEFAULT_BUFLEN);
+		memset(tempmsg, 0, BUFLEN);
 
 		if (new_client.socket != 0)
 		{
-			int iResult = recv(new_client.socket, tempmsg, DEFAULT_BUFLEN, 0);
+			int iResult = recv(new_client.socket, tempmsg, BUFLEN, 0);
 			
 			if (iResult != SOCKET_ERROR)
 			{
@@ -77,11 +76,17 @@ int process_client(client_type &new_client, std::vector<client_type> &client_arr
 
 int main()
 {
-	std::string msg = "";
+	std::string msg = "", IP = "";
 	std::vector<client_type> client(MAX_CLIENTS);
 	int num_clients = 0;
 	int temp_id = -1;
 	std::thread my_thread[MAX_CLIENTS];
+
+	std::cout << "Podaj adres IP tego komputera: ";
+	getline(std::cin, IP);
+
+	const char *IpAddress = IP.c_str();
+	
 	WSADATA wsaData;
 
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -100,7 +105,7 @@ int main()
 	sockaddr_in service;
 	memset(&service, 0, sizeof(service));
 	service.sin_family = AF_INET;
-	service.sin_addr.s_addr = inet_addr("127.0.0.1");
+	service.sin_addr.s_addr = inet_addr("192.168.2.10");
 	service.sin_port = htons(27015);
 
 	if (bind(mainSocket, (SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
@@ -145,15 +150,26 @@ int main()
 				num_clients++;
 
 		}
-		char nick[10];
-		memset(nick, 0, 10);
-		recv(client[temp_id].socket, nick, 10, 0);
-		client[temp_id].nick = nick;
-		std::cout <<client[temp_id].nick<< " dolaczyl."<<std::endl;
-		
-		
-		my_thread[temp_id] = std::thread(process_client, std::ref(client[temp_id]), std::ref(client), std::ref(my_thread[temp_id]));
-		
+
+		if (temp_id != -1)
+		{
+			char nick[10];
+			memset(nick, 0, 10);
+			recv(client[temp_id].socket, nick, 10, 0);
+			client[temp_id].nick = nick;
+			std::cout << client[temp_id].nick << " dolaczyl." << std::endl;
+
+
+			my_thread[temp_id] = std::thread(process_client, std::ref(client[temp_id]), std::ref(client), std::ref(my_thread[temp_id]));
+		}
+
+		else
+		{
+			std::string str = "Serwer pelny";
+			int length = str.length();
+			send(incoming, str.c_str(), length, 0);
+
+		}
 	} 
 
 

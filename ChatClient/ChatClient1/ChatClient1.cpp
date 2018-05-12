@@ -13,24 +13,24 @@ using namespace std;
 #include <cstdlib>
 #include <winsock2.h>
 
-#define DEFAULT_BUFLEN 512
+#define BUFLEN 512
 
 struct client_type
 {
 	SOCKET socket;
 	int id;
-	char received_message[DEFAULT_BUFLEN];
+	char received_message[BUFLEN];
 };
 
 int process_client(client_type &new_client)
 {
 	while (1)
 	{
-		memset(new_client.received_message, 0, DEFAULT_BUFLEN);
+		memset(new_client.received_message, 0, BUFLEN);
 
 		if (new_client.socket != 0)
 		{
-			int iResult = recv(new_client.socket, new_client.received_message, DEFAULT_BUFLEN, 0);
+			int iResult = recv(new_client.socket, new_client.received_message, BUFLEN, 0);
 
 			if (iResult != SOCKET_ERROR)
 				cout << new_client.received_message << endl;
@@ -52,10 +52,15 @@ int process_client(client_type &new_client)
 int main()
 {
 	struct addrinfo *resultt = NULL, *ptr = NULL;
-	string message,nick;
+	string message, nick, IP;
 	int iResult = 0;
 	string sent_message = "";
 	client_type client = { INVALID_SOCKET, -1, ""};
+
+	cout << "Podaj adres IP serwer: ";
+	getline(cin, IP);
+
+	const char *IpAddress = IP.c_str();
 
 	WSADATA wsaData;
 
@@ -75,7 +80,7 @@ int main()
 	sockaddr_in service;
 	memset(&service, 0, sizeof(service));
 	service.sin_family = AF_INET;
-	service.sin_addr.s_addr = inet_addr("127.0.0.1");
+	service.sin_addr.s_addr = inet_addr(IpAddress);
 	service.sin_port = htons(27015);
 
 	if (connect(mainSocket, (SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
