@@ -1,4 +1,4 @@
-﻿Build started 12.05.2018 13:30:18.
+﻿Build started 17.05.2018 15:46:31.
      1>Project "F:\Projekty\Projekt\ChatServer\ChatServer\ChatServer.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          F:\Programy\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /Oy- /GL /D WIN32 /D _CRT_SECURE_NO_WARNINGS /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Release\ChatServer.pch" /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt ChatServer.cpp
@@ -13,4 +13,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.53
+Time Elapsed 00:00:02.57

@@ -105,7 +105,7 @@ int main()
 	sockaddr_in service;
 	memset(&service, 0, sizeof(service));
 	service.sin_family = AF_INET;
-	service.sin_addr.s_addr = inet_addr("192.168.2.10");
+	service.sin_addr.s_addr = inet_addr(IpAddress);
 	service.sin_port = htons(27015);
 
 	if (bind(mainSocket, (SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
